@@ -9,10 +9,10 @@ exclude:
   - "/vendor/"
 
 # Site settings
-title: Ag-lee Blog
+title: 개발 공부용 블로그
 subtitle: "개발 공부를 시작해봅시다."
 email: eunji.lee3407@gmail.com
-name: Eunji
+name: ag-lee
 description: >
   개발 공부를 시작해봅시다.
 # Base URL of site (i.e. /blog). It should always start with a slash,
@@ -48,8 +48,8 @@ jekyll-archives:
 
 # Category descriptions (for archive pages)
 descriptions:
-  - cat: jekyll
-    desc: "Posts describing Jekyll setup techniques."
+  - cat: SpringBootStudy
+    desc: "Spring Boot2 스터디하면서 정리한 내용 및 실습"
 
   - cat: dummy
     desc: "Just some placeholder posts, lorem ipsum and the rest."

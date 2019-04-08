@@ -21,8 +21,7 @@ categories: SpringBootStudy
 * spring boot에서는 spring data mongo db를 지원한다.
 
     * mongo db core + Reactive stream driver까지 포함한 패키지를 지원
-    * `compile('org.springframework.boot:spring-boot-starter-
-        data-mongodb-reactive')`
+    * `compile('org.springframework.boot:spring-boot-starter-data-mongodb-reactive')`
     * Spring-boot-starter-webflux와 spring-boot-starter-
         Data-mongodb-reactive 가 모두 Project Reactor를 가져오기 때문에 두개를 맞춰줘야한다.  (Dependency-managment가 같은 버전을 가지고 오도록 지원한다.)
 
@@ -44,10 +43,9 @@ categories: SpringBootStudy
 
 ```java
 interface EmployeeRepository
-        extends ReactiveCrudRepository<Employee, Long> {
-          Flux<Employee> findByFirstName(Mono<String> name);
-       }
-
+    extends ReactiveCrudRepository<Employee, Long> {
+    Flux<Employee> findByFirstName(Mono<String> name);
+}
 ```
 
 * ßSpring Data는 `Repository` 를 상속한 인터페이스가 있으면 모든 메소드를 탐색하고 method signiture를 파싱한다.
@@ -71,33 +69,36 @@ interface EmployeeRepository
 ## Wiring up Spring Data repositories with Spring Boot
 
 * `@EnableReactiveMongoRepositories`  Mongo DB 설정을 활성화 시키는 Spring Data 어노테이션.
-
-    ```java
-    @Configuration
-    @ConditionalOnClass({ MongoClient.class, ReactiveMongoRepository.class })
-    @ConditionalOnMissingBean({
-        ReactiveMongoRepositoryFactoryBean.class,
-        ReactiveMongoRepositoryConfigurationExtension.class })
-    @ConditionalOnProperty(prefix = "spring.data.mongodb.reactive-repositories", name = "enabled", havingValue = "true", matchIfMissing = true)
-    @Import(MongoReactiveRepositoriesAutoConfigureRegistrar.class)
-    @AutoConfigureAfter(MongoReactiveDataAutoConfiguration.class)
-    public class MongoReactiveRepositoriesAutoConfiguration {}
-    
-    ```
-
     * `@ConditionalOnClass` : 시작할 때 리스트에 있는 클래스들을 classpath에 있어야만 실행된다.
     * `@CondtionalOnMssingBean` : 아래 리스트의 Bean들이 존재하지 않는 경우에만 실행된다.
     * `@ConditionalOnProperty` : 이 설정을 적용하려면, spring.data.mongodb.reactive-repositories의 enabled가 true로 설정되어 있어야 합니다. 이 속성이 없는 경우에는 true로 설정합니다.
     * `@Import` : Reative repositories의 모든 빈 생성을 이 클래스에 위임한다.
     * `@AutoConfigureAfter` : MongoReactiveDataAutoConfiguration 설정이 완료된 후에 이 설정을 적용하면 여기서 설정된 내용을 확신할 수 있습니다.
 
+
+```java
+@Configuration
+@ConditionalOnClass({ MongoClient.class, ReactiveMongoRepository.class })
+@ConditionalOnMissingBean({
+    ReactiveMongoRepositoryFactoryBean.class,
+    ReactiveMongoRepositoryConfigurationExtension.class })
+@ConditionalOnProperty(prefix = "spring.data.mongodb.reactive-repositories", name = "enabled", havingValue = "true", matchIfMissing = true)
+@Import(MongoReactiveRepositoriesAutoConfigureRegistrar.class)
+@AutoConfigureAfter(MongoReactiveDataAutoConfiguration.class)
+public class MongoReactiveRepositoriesAutoConfiguration {
+
+}
+```
+
+
+
 * MongoReactiveRepositoriesAutoConfigureRegistrar 가 설정 데이터를 끌어오는데, 이 때 그 클래스의 마지막에는 아래코드가 있다.
 
-    ```java
-    @EnableReactiveMongoRepositories
-    private static class EnableReactiveMongoRepositoriesConfiguration {
-           }
-    ```
+```java
+@EnableReactiveMongoRepositories
+private static class EnableReactiveMongoRepositoriesConfiguration {
+}
+```
 
     
 
@@ -126,32 +127,31 @@ interface EmployeeRepository
     * 그리고 그 결과들을 모노로 받아 Mono.when으로 결과를 join한다. 이것은 DB에 저장되고 파일이 서버에 복사될 때까지 각 파일에 대한 작업이 완료되지 않는 것을 의미한다. 
     * 전체 플로우는 then()으로 종료되고, 각 파일들에 대한 프로세스가 종료된 것을 알 수가 있다.
 
-    ```java
-    public Mono<Void> createImage(Flux<FilePart> files) {
-             return files
-              .flatMap(file -> {
-                Mono<Image> saveDatabaseImage = imageRepository.save(
-                  new Image(
-                    UUID.randomUUID().toString(),
-                     file.filename()));
-                    Mono<Void> copyFile = Mono.just(
-                      Paths.get(UPLOAD_ROOT, file.filename())
-                       .toFile())
-                       .log("createImage-picktarget")
-                       .map(destFile -> {
-                         try {
-                           destFile.createNewFile();
-                           return destFile;
-                         } catch (IOException e) {
-                             throw new RuntimeException(e);
-    } })
-                       .log("createImage-newfile")
-                       .flatMap(file::transferTo)
-                       .log("createImage-copy");
-                   return Mono.when(saveDatabaseImage, copyFile);
-              })
-    .then(); }
-    ```
+```java
+public Mono<Void> createImage(Flux<FilePart> files) {
+            return files
+            .flatMap(file -> {
+            Mono<Image> saveDatabaseImage = imageRepository.save(
+                new Image(
+                UUID.randomUUID().toString(),
+                    file.filename()));
+                Mono<Void> copyFile = Mono.just(
+                    Paths.get(UPLOAD_ROOT, file.filename())
+                    .toFile())
+                    .log("createImage-picktarget")
+                    .map(destFile -> {
+                        try {
+                        destFile.createNewFile();
+                        return destFile;
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);} })
+                    .log("createImage-newfile")
+                    .flatMap(file::transferTo)
+                    .log("createImage-copy");
+                return Mono.when(saveDatabaseImage, copyFile);
+            }).then(); 
+}
+```
 
 * Reactor가 Mono.when()으로 묶인 job들이 순서를 보장하진 않지만, 작업을 계속 진행하며 모든 방면을 다 처리하는 것을 보장하기 때문에 여러 개의 task들이 완벽하게 수행해야할 때 유용하다.
 
@@ -163,13 +163,13 @@ interface EmployeeRepository
 
 * 아래 코드처럼 조건이 여러가지 주어질 때 Spring Data의 함수를 사용하게 되면 코드가 지저분해진다.
 
-    ```java
-    interface PersonRepository
-            extends ReactiveCrudRepository<Person, Long> {
-              List<Person> findByFirstNameAndLastNameAndAgeBetween(
-                String firstName, String lastName, int from, int to);
-    }
-    ```
+```java
+interface PersonRepository
+        extends ReactiveCrudRepository<Person, Long> {
+            List<Person> findByFirstNameAndLastNameAndAgeBetween(
+            String firstName, String lastName, int from, int to);
+}
+```
 
 * `Query by Example` : 필요한 조건을 도메인 오브젝트에 모아서 쿼리를 만든다.
 
@@ -177,27 +177,29 @@ interface EmployeeRepository
 
     * ` <S extends T> Mono<S> findOne(Example<S> example);`  Example Type을 인자로 받은 메소드들이 생성되고 아래처럼 도메인 객체의 Example 객체를 생성한다.
 
-        ```java
-        Employee e = new Employee();
-               e.setFirstName("Bilbo");
-               Example<Employee> example = Example.of(e);
-        ```
+```java
+Employee e = new Employee();
+e.setFirstName("Bilbo");
+Example<Employee> example = Example.of(e);
+```
 
-    * `Example` : QBE를 위한 오브젝트로 probe와 matcher로 이루어져 있는 데, probe는 조건으로 사용하려는 값들을 가지고 POJO 객체고 matcher는 프로브가 어떻게 사용될 것인지 제어하는 매처이다.
 
-        * Example은 기본적으로 프로브에 들어가있는 값들을 통해 쿼리를 만들고 값들은 저장된 레코드들과 일치해야 한다.
+* `Example` : QBE를 위한 오브젝트로 probe와 matcher로 이루어져 있는 데, probe는 조건으로 사용하려는 값들을 가지고 POJO 객체고 matcher는 프로브가 어떻게 사용될 것인지 제어하는 매처이다.
 
-        * ExampleMatcher를 생성해서 매쳐를 조절할 수도 있다.
+    * Example은 기본적으로 프로브에 들어가있는 값들을 통해 쿼리를 만들고 값들은 저장된 레코드들과 일치해야 한다.
 
-            ```java
-             Employee e = new Employee();
-                   e.setLastName("baggins"); // Lowercase lastName
-                   ExampleMatcher matcher = ExampleMatcher.matching()
-                    .withIgnoreCase()
-                    .withMatcher("lastName", startsWith())
-                    .withIncludeNullValues();
-                   Example<Employee> example = Example.of(e, matcher);
-            ```
+    * ExampleMatcher를 생성해서 매쳐를 조절할 수도 있다.
+
+
+```java
+Employee e = new Employee();
+e.setLastName("baggins"); // Lowercase lastName
+ExampleMatcher matcher = ExampleMatcher.matching()
+.withIgnoreCase()
+.withMatcher("lastName", startsWith())
+.withIncludeNullValues();
+Example<Employee> example = Example.of(e, matcher);
+```
 
 
 

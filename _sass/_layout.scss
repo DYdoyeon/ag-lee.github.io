@@ -28,11 +28,13 @@ ul.default {
 }
 
 code {
-	background-color: rgb(245, 230, 252);
+	background-color: lavender;
+	color: mediumpurple;
+	font-weight: bold;
 	display: inline-block;
 	border-radius: 3px;
 	padding: 0 3px;
-	margin: 1.5px;
+	margin: 1px;
 }
 
 pre code.hljs {
@@ -71,6 +73,7 @@ pre code.hljs {
 }
 
 .site-header-container, .post-header-container {
+	border: 0px !important;
 	width: 100%;
 	text-align: center;
 	&.has-cover {

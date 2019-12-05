@@ -201,6 +201,8 @@ pre code.hljs {
 	.wrapper {
 		@include outer-container;
 		padding: 1em;
+		max-width: 53em !important;
+
 	}
 	/*
 	*	index.html
